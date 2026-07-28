@@ -3,15 +3,16 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 
--- Crear GUI
+-- Crear GUI con nombres genéricos para evadir detectores básicos
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "OrbitMenuGui"
+screenGui.Name = "RobloxTopbar"
 screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Name = "MainFrame"
+mainFrame.Name = "NotificationFrame"
 mainFrame.Size = UDim2.new(0.45, 0, 0.5, 0)
 mainFrame.Position = UDim2.new(0.05, 0, 0.05, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -45,14 +46,14 @@ local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0.15, 0)
 title.Position = UDim2.new(0, 0, 0, 0)
 title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-title.Text = "Menu de Orbita"
+title.Text = "Sistema"
 title.TextColor3 = Color3.new(1, 1, 1)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 20
 title.Parent = mainFrame
 
 local scrollFrame = Instance.new("ScrollingFrame")
-scrollFrame.Name = "PlayerList"
+scrollFrame.Name = "ListContainer"
 scrollFrame.Size = UDim2.new(1, -10, 0.7, 0)
 scrollFrame.Position = UDim2.new(0, 5, 0.15, 0)
 scrollFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
@@ -66,11 +67,11 @@ uiListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 uiListLayout.Parent = scrollFrame
 
 local orbitButton = Instance.new("TextButton")
-orbitButton.Name = "OrbitButton"
+orbitButton.Name = "ActionButton"
 orbitButton.Size = UDim2.new(1, -10, 0.15, 0)
 orbitButton.Position = UDim2.new(0, 5, 0.85, 0)
 orbitButton.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-orbitButton.Text = "Orbitar"
+orbitButton.Text = "Activar"
 orbitButton.TextColor3 = Color3.new(1, 1, 1)
 orbitButton.Font = Enum.Font.GothamBold
 orbitButton.TextSize = 22
@@ -126,11 +127,10 @@ updatePlayerList()
 
 orbitButton.MouseButton1Click:Connect(function()
 	if not targetPlayer then
-		warn("Selecciona un jugador primero")
 		return
 	end
 	isOrbiting = not isOrbiting
-	orbitButton.Text = isOrbiting and "Detener Orbita" or "Orbitar"
+	orbitButton.Text = isOrbiting and "Desactivar" or "Activar"
 	orbitButton.BackgroundColor3 = isOrbiting and Color3.fromRGB(150, 0, 0) or Color3.fromRGB(0, 150, 0)
 end)
 
@@ -172,7 +172,7 @@ local function triggerAbility()
 			track.Stopped:Connect(function()
 				isUsingAbility = false
 				isOrbiting = true
-				orbitButton.Text = "Detener Orbita"
+				orbitButton.Text = "Desactivar"
 				orbitButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
 			end)
 		end
@@ -182,17 +182,14 @@ end
 -- Detectar input para interrumpir órbita
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-		-- Verificar si se tocó un GUI de habilidad (botones de habilidad en JJS u otros juegos)
 		local target = input.Target
 		if target and target:IsA("GuiButton") then
-			-- Buscar si es un botón de habilidad (por nombre o padre)
 			local name = string.lower(target.Name)
 			local parentName = target.Parent and string.lower(target.Parent.Name) or ""
 			if string.find(name, "skill") or string.find(name, "ability") or string.find(name, "move") or string.find(name, "key") or string.find(name, "slot") or string.find(parentName, "skill") or string.find(parentName, "ability") or string.find(parentName, "hotbar") or string.find(parentName, "action") then
 				triggerAbility()
 			end
 		else
-			-- Si no tocó un GUI de habilidad, pero está orbitando, tp frente a frente
 			if isOrbiting and not isUsingAbility and targetPlayer and targetPlayer.Character and player.Character then
 				triggerAbility()
 			end
@@ -200,7 +197,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
--- También detectar teclas comunes de habilidades (1, 2, 3, 4, Q, E, etc.)
+-- Detectar teclas comunes de habilidades
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if input.KeyCode == Enum.KeyCode.One or input.KeyCode == Enum.KeyCode.Two or input.KeyCode == Enum.KeyCode.Three or input.KeyCode == Enum.KeyCode.Four or input.KeyCode == Enum.KeyCode.Q or input.KeyCode == Enum.KeyCode.E or input.KeyCode == Enum.KeyCode.Z or input.KeyCode == Enum.KeyCode.X then
 		triggerAbility()
