@@ -1,87 +1,120 @@
+local RS = game:GetService("RunService")
+local WP = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
-local gui = Instance.new("ScreenGui")
-gui.Name = "TeleportMenu"
-gui.ResetOnSpawn = false
-gui.Parent = LP:WaitForChild("PlayerGui")
-local mf = Instance.new("Frame")
-mf.Size = UDim2.new(0,220,0,36)
-mf.Position = UDim2.new(0,10,0.5,0)
-mf.AnchorPoint = Vector2.new(0,0.5)
-mf.BackgroundColor3 = Color3.fromRGB(30,30,30)
-mf.BorderSizePixel = 0
-Instance.new("UICorner",mf).CornerRadius = UDim.new(0,8)
-mf.Parent = gui
-local tb = Instance.new("TextButton")
-tb.Size = UDim2.new(1,0,1,0)
-tb.BackgroundColor3 = Color3.fromRGB(50,120,200)
-tb.TextColor3 = Color3.new(1,1,1)
-tb.Text = "Players"
-tb.Font = Enum.Font.GothamBold
-tb.TextSize = 14
-Instance.new("UICorner",tb).CornerRadius = UDim.new(0,8)
-tb.Parent = mf
-local lf = Instance.new("Frame")
-lf.Size = UDim2.new(1,0,0,0)
-lf.Position = UDim2.new(0,0,1,4)
-lf.BackgroundColor3 = Color3.fromRGB(25,25,25)
-lf.BorderSizePixel = 0
-lf.ClipsDescendants = true
-lf.Visible = false
-Instance.new("UICorner",lf).CornerRadius = UDim.new(0,8)
-lf.Parent = mf
-local ll = Instance.new("UIListLayout")
-ll.SortOrder = Enum.SortOrder.LayoutOrder
-ll.Padding = UDim.new(0,2)
-ll.Parent = lf
-local open = false
-local function refresh()
-	for _,c in lf:GetChildren() do if c:IsA("Frame") then c:Destroy() end end
-	local n=0
-	for _,p in Players:GetPlayers() do
-		if p==LP then continue end
-		n=n+1
-		local r=Instance.new("Frame")
-		r.Size=UDim2.new(1,-8,0,28)
-		r.Position=UDim2.new(0,4,0,0)
-		r.BackgroundColor3=Color3.fromRGB(40,40,40)
-		r.BorderSizePixel=0
-		Instance.new("UICorner",r).CornerRadius=UDim.new(0,6)
-		r.LayoutOrder=n
-		r.Parent=lf
-		local nl=Instance.new("TextLabel")
-		nl.Size=UDim2.new(1,-60,1,0)
-		nl.BackgroundTransparency=1
-		nl.TextColor3=Color3.new(1,1,1)
-		nl.Text=p.DisplayName
-		nl.TextXAlignment=Enum.TextXAlignment.Left
-		nl.Font=Enum.Font.Gotham
-		nl.TextSize=12
-		Instance.new("UIPadding",nl).PaddingLeft=UDim.new(0,8)
-		nl.Parent=r
-		local b=Instance.new("TextButton")
-		b.Size=UDim2.new(0,50,0,20)
-		b.Position=UDim2.new(1,-54,0.5,0)
-		b.AnchorPoint=Vector2.new(0,0.5)
-		b.BackgroundColor3=Color3.fromRGB(80,180,80)
-		b.TextColor3=Color3.new(1,1,1)
-		b.Text="TP"
-		b.Font=Enum.Font.GothamBold
-		b.TextSize=11
-		Instance.new("UICorner",b).CornerRadius=UDim.new(0,4)
-		b.Parent=r
-		b.MouseButton1Click:Connect(function()
-			local hc=LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-			local tc=p.Character and p.Character:FindFirstChild("HumanoidRootPart")
-			if hc and tc then hc.CFrame=tc.CFrame*CFrame.new(0,0,3) end
-		end)
-	end
-	lf.Size=UDim2.new(1,0,0,n*30+4)
+
+local MAX_RANGE = 15
+local ATTRACT_SPEED = 8
+local BASE_SIZE = 10
+local SLOT_SIZE = 3
+local FLOOR_Y_OFFSET = 3
+
+local collected = {}
+local slots = {}
+local slotIndex = 0
+local baseActive = false
+
+local function isCharacterPart(part)
+    local p = part.Parent
+    while p do
+        if p:IsA("Model") and p:FindFirstChild("Humanoid") then return true end
+        p = p.Parent
+    end
+    return false
 end
-tb.MouseButton1Click:Connect(function()
-	open=not open
-	lf.Visible=open
-	if open then refresh() end
+
+local function isAlreadyCollected(part)
+    for _, v in pairs(collected) do
+        if v.part == part then return true end
+    end
+    return false
+end
+
+local function getSlotPosition(index)
+    local layer = math.floor((index) / (BASE_SIZE * BASE_SIZE))
+    local inLayer = index % (BASE_SIZE * BASE_SIZE)
+    local row = math.floor(inLayer / BASE_SIZE)
+    local col = inLayer % BASE_SIZE
+    local half = (BASE_SIZE - 1) / 2 * SLOT_SIZE
+    local x = (col - half / SLOT_SIZE) * SLOT_SIZE
+    local z = (row - half / SLOT_SIZE) * SLOT_SIZE
+    if layer == 0 then
+        return Vector3.new(x, FLOOR_Y_OFFSET, z)
+    else
+        local y = FLOOR_Y_OFFSET + layer * SLOT_SIZE
+        if row == 0 then
+            return Vector3.new(x, y, -half)
+        elseif row == BASE_SIZE - 1 then
+            return Vector3.new(x, y, half)
+        elseif col == 0 then
+            return Vector3.new(-half, y, z)
+        elseif col == BASE_SIZE - 1 then
+            return Vector3.new(half, y, z)
+        else
+            return nil
+        end
+    end
+end
+
+local function getNextSlot()
+    while true do
+        local pos = getSlotPosition(slotIndex)
+        slotIndex = slotIndex + 1
+        if pos then
+            local occupied = false
+            for _, v in pairs(collected) do
+                if v.slotIndex == slotIndex - 1 then
+                    occupied = true
+                    break
+                end
+            end
+            if not occupied then
+                return slotIndex - 1, pos
+            end
+        end
+    end
+end
+
+RS.Heartbeat:Connect(function(dt)
+    local char = LP.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local rootPos = hrp.Position
+
+    for _, part in WP:GetDescendants() do
+        if not part:IsA("BasePart") then continue end
+        if part.Anchored then continue end
+        if isCharacterPart(part) then continue end
+        if isAlreadyCollected(part) then continue end
+        if part:FindFirstChild("BodyPosition") then continue end
+
+        local dist = (part.Position - rootPos).Magnitude
+        if dist <= MAX_RANGE then
+            local si, slotPos = getNextSlot()
+            local bp = Instance.new("BodyPosition")
+            bp.MaxForce = Vector3.new(50000, 50000, 50000)
+            bp.P = ATTRACT_SPEED
+            bp.D = 3
+            bp.Parent = part
+            part.Anchored = false
+            table.insert(collected, {part = part, bp = bp, slotIndex = si})
+            baseActive = true
+        end
+    end
+
+    if not baseActive then return end
+
+    local baseOrigin = rootPos
+    for _, entry in pairs(collected) do
+        local part = entry.part
+        local bp = entry.bp
+        if not part or not part.Parent then continue end
+        local si = entry.slotIndex
+        local slotPos = getSlotPosition(si)
+        if slotPos then
+            local target = baseOrigin + slotPos
+            bp.Position = target
+        end
+    end
 end)
-Players.PlayerAdded:Connect(function() if open then refresh() end end)
-Players.PlayerRemoving:Connect(function() if open then refresh() end end)
