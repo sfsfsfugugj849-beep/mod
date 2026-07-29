@@ -1,61 +1,58 @@
 local Players = game:GetService("Players")
-local ContextActionService = game:GetService("ContextActionService")
-local GuiService = game:GetService("GuiService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
-local function pressMobileBlock()
-    local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
-    if playerGui then
-        -- Busca el botón de bloqueo de Jujutsu Shenanigans en la interfaz de celular
-        local blockBtn = playerGui:FindFirstChild("BlockButton", true) or playerGui:FindFirstChild("Block", true)
-        if blockBtn and blockBtn:IsA("GuiObject") then
-            local pos = blockBtn.AbsolutePosition + (blockBtn.AbsoluteSize / 2)
-            VirtualInputManager:SendTouchTapEvent(pos.X, pos.Y)
-        end
-    end
+local function createFire()
+    local char = LocalPlayer.Character
+    if not char then return end
     
-    -- Acción de respaldo para activar el bloqueo del juego directamente
-    pcall(function()
-        ContextActionService:CallFunction("Block", Enum.UserInputState.Begin, nil)
-        task.wait(0.35)
-        ContextActionService:CallFunction("Block", Enum.UserInputState.End, nil)
-    end)
-end
-
-local function monitorTarget(char)
-    if char == LocalPlayer.Character then return end
-    local humanoid = char:WaitForChild("Humanoid", 5)
-    if not humanoid then return end
+    -- Buscamos las manos dependiendo de si el avatar es R15 o R6
+    local hands = {"RightHand", "LeftHand", "Right Arm", "Left Arm"}
     
-    local animator = humanoid:WaitForChild("Animator", 5)
-    if not animator then return end
-    
-    animator.AnimationPlayed:Connect(function(track)
-        -- Filtra animaciones cortas/ataques rápido (como M1 o habilidades)
-        if track.Length > 0.15 then
-            task.spawn(function()
-                local delayTime = math.max(0, track.Length - 0.3)
-                if delayTime > 0 then task.wait(delayTime) end
-                
-                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("HumanoidRootPart") then
-                    local distance = (LocalPlayer.Character.HumanoidRootPart.Position - char.HumanoidRootPart.Position).Magnitude
-                    if distance <= 18 then
-                        pressMobileBlock()
-                    end
-                end
+    for _, partName in ipairs(hands) do
+        local hand = char:FindFirstChild(partName)
+        if hand then
+            -- Crear el efecto de fuego
+            local fire = Instance.new("Fire")
+            fire.Size = 4
+            fire.Heat = 15
+            fire.Color = Color3.fromRGB(255, 100, 0)
+            fire.SecondaryColor = Color3.fromRGB(255, 0, 0)
+            fire.Parent = hand
+            
+            -- Eliminar el fuego despues de 2.5 segundos (tiempo de la habilidad)
+            task.delay(2.5, function()
+                if fire then fire:Destroy() end
             end)
         end
-    end)
-end
-
-for _, player in ipairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer then
-        if player.Character then monitorTarget(player.Character) end
-        player.CharacterAdded:Connect(monitorTarget)
     end
 end
 
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(monitorTarget)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    -- Detectar toque en la pantalla de celular
+    if input.UserInputType == Enum.UserInputType.Touch then
+        local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+        if not playerGui then return end
+        
+        -- Obtener los elementos de la interfaz que fueron tocados
+        local guis = playerGui:GetGuiObjectsAtPosition(input.Position.X, input.Position.Y)
+        
+        local isSkill1 = false
+        for _, gui in ipairs(guis) do
+            local name = string.lower(gui.Name)
+            -- Comprueba nombres comunes para el botón de la habilidad 1 en la interfaz
+            if name == "1" or name == "skill1" or name == "move1" or name == "ability1" or name == "button1" or name == "attack1" then
+                isSkill1 = true
+                break
+            end
+        end
+        
+        if isSkill1 then
+            createFire()
+        end
+        
+    -- Soporte para PC (Tecla 1) por si acaso
+    elseif input.KeyCode == Enum.KeyCode.One then
+        createFire()
+    end
 end)
