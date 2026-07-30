@@ -1,19 +1,19 @@
--- Delta Executor - Lock Back & Camera Script
+-- Delta Executor - Perfect Back Lock & Target Camera Focus
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
--- Eliminar interfaz anterior si existe
-local oldGui = game:GetService("CoreGui"):FindFirstChild("DeltaBackFollowGui") or LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("DeltaBackFollowGui")
+-- Limpiar GUI anterior si existe
+local oldGui = game:GetService("CoreGui"):FindFirstChild("DeltaCamFollowGui") or LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("DeltaCamFollowGui")
 if oldGui then oldGui:Destroy() end
 
 -- ==========================================
--- CREACIÓN DE INTERFAZ GRÁFICA PEQUEÑA (GUI)
+-- INTERFAZ GRÁFICA PEQUEÑA (GUI)
 -- ==========================================
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "DeltaBackFollowGui"
+ScreenGui.Name = "DeltaCamFollowGui"
 ScreenGui.ResetOnSpawn = false
 
 pcall(function()
@@ -23,11 +23,10 @@ if not ScreenGui.Parent then
 	ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 end
 
--- Cuadro Pequeño (180x220 pixels)
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 180, 0, 220)
 MainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
@@ -39,10 +38,10 @@ UICorner.Parent = MainFrame
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 28)
-Title.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-Title.Text = "Back Follower"
+Title.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+Title.Text = "Back Cam & Lock"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 14
+Title.TextSize = 13
 Title.Font = Enum.Font.SourceSansBold
 Title.Parent = MainFrame
 
@@ -53,7 +52,7 @@ TitleCorner.Parent = Title
 local ScrollList = Instance.new("ScrollingFrame")
 ScrollList.Size = UDim2.new(0.9, 0, 0.52, 0)
 ScrollList.Position = UDim2.new(0.05, 0, 0.16, 0)
-ScrollList.BackgroundColor3 = Color3.fromRGB(12, 12, 15)
+ScrollList.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
 ScrollList.BorderSizePixel = 0
 ScrollList.ScrollBarThickness = 3
 ScrollList.Parent = MainFrame
@@ -66,7 +65,7 @@ UIListLayout.Padding = UDim.new(0, 3)
 local FollowBtn = Instance.new("TextButton")
 FollowBtn.Size = UDim2.new(0.9, 0, 0.2, 0)
 FollowBtn.Position = UDim2.new(0.05, 0, 0.74, 0)
-FollowBtn.BackgroundColor3 = Color3.fromRGB(40, 140, 80)
+FollowBtn.BackgroundColor3 = Color3.fromRGB(30, 120, 180)
 FollowBtn.Text = "Seguir Espalda"
 FollowBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 FollowBtn.Font = Enum.Font.SourceSansBold
@@ -78,7 +77,7 @@ BtnCorner.CornerRadius = UDim.new(0, 6)
 BtnCorner.Parent = FollowBtn
 
 -- ==========================================
--- LÓGICA DE SEGUIMIENTO Y CÁMARA
+-- LÓGICA PERFECCIONADA DE CÁMARA Y PERSONAJE
 -- ==========================================
 local selectedPlayer = nil
 local isFollowing = false
@@ -88,17 +87,32 @@ local function getRoot(char)
 	return char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso"))
 end
 
+local function getHead(char)
+	return char and (char:FindFirstChild("Head") or getRoot(char))
+end
+
 local function stopFollowing()
 	isFollowing = false
 	FollowBtn.Text = "Seguir Espalda"
-	FollowBtn.BackgroundColor3 = Color3.fromRGB(40, 140, 80)
-	
+	FollowBtn.BackgroundColor3 = Color3.fromRGB(30, 120, 180)
+
 	if followConnection then
 		followConnection:Disconnect()
 		followConnection = nil
 	end
-	
-	-- Restaurar tipo de cámara a normal
+
+	-- Restaurar personaje a la normalidad
+	if LocalPlayer.Character then
+		local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if hum then
+			hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+		end
+		for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+			if part:IsA("BasePart") then part.CanCollide = true end
+		end
+	end
+
+	-- Restaurar control de la cámara
 	Camera.CameraType = Enum.CameraType.Custom
 	if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
 		Camera.CameraSubject = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
@@ -123,22 +137,37 @@ local function startFollowing(targetPlayer)
 
 		local myHRP = getRoot(myChar)
 		local targetHRP = getRoot(targetChar)
+		local targetHead = getHead(targetChar)
+		local myHumanoid = myChar:FindFirstChildOfClass("Humanoid")
 
-		if not (myHRP and targetHRP) then return end
+		if not (myHRP and targetHRP and targetHead) then return end
 
-		-- 1. Posicionar exactamente a 4 studs detrás de su espalda (+Z en espacio local de la CFrame)
-		-- CFrame.new(0, 0, 4) se coloca a 4 studs detrás de la orientación del objetivo
-		local backPosition = targetHRP.CFrame * CFrame.new(0, 0, 4)
-		myHRP.CFrame = backPosition
+		-- Anti-temblor: Apagamos físicas y colisiones para no rebotar
+		if myHumanoid then
+			myHumanoid:ChangeState(Enum.HumanoidStateType.Physics)
+		end
+		for _, part in pairs(myChar:GetDescendants()) do
+			if part:IsA("BasePart") then part.CanCollide = false end
+		end
 
-		-- 2. Apuntar la cámara directamente al jugador objetivo
+		-- 1. POSICIONAR AL PERSONAJE (Copia exacta de su rotación, 4 studs atrás)
+		-- En Roblox, +Z es hacia atrás. Esto asegura que mires hacia la misma dirección que él.
+		myHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 4)
+		
+		-- Matar inercia para evitar tirones
+		myHRP.Velocity = Vector3.new(0, 0, 0)
+		myHRP.RotVelocity = Vector3.new(0, 0, 0)
+
+		-- 2. POSICIONAR LA CÁMARA (Tomando como base al jugador objetivo, no a ti)
+		-- Nos ponemos 12 studs detrás del objetivo, un poco elevados, y obligamos a la cámara a mirar su cabeza.
 		Camera.CameraType = Enum.CameraType.Scriptable
-		Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHRP.Position)
+		local camPos = (targetHRP.CFrame * CFrame.new(0, 2.5, 12)).Position
+		Camera.CFrame = CFrame.new(camPos, targetHead.Position)
 	end)
 end
 
 -- ==========================================
--- ACTUALIZACIÓN DE LISTA DE JUGADORES
+-- ACTUALIZACIÓN DE JUGADORES
 -- ==========================================
 local function updatePlayerList()
 	for _, child in pairs(ScrollList:GetChildren()) do
@@ -149,7 +178,7 @@ local function updatePlayerList()
 		if player ~= LocalPlayer then
 			local btn = Instance.new("TextButton")
 			btn.Size = UDim2.new(1, 0, 0, 22)
-			btn.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+			btn.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 			btn.BorderSizePixel = 0
 			btn.Text = " " .. player.DisplayName
 			btn.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -165,11 +194,10 @@ local function updatePlayerList()
 			btn.MouseButton1Click:Connect(function()
 				selectedPlayer = player
 				for _, b in pairs(ScrollList:GetChildren()) do
-					if b:IsA("TextButton") then b.BackgroundColor3 = Color3.fromRGB(30, 30, 38) end
+					if b:IsA("TextButton") then b.BackgroundColor3 = Color3.fromRGB(25, 25, 30) end
 				end
 				btn.BackgroundColor3 = Color3.fromRGB(50, 110, 190)
-				
-				-- Si ya estaba siguiendo a otro, detenerlo
+
 				if isFollowing then
 					stopFollowing()
 				end
