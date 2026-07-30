@@ -12,132 +12,113 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local objetivoBloqueado = nil
 local estaVolando = false
 local estaNoclipeando = false
-local velocidadVuelo = 50
+local velocidadVuelo = 40
+local distanciaAgarre = 3 -- Qué tan pegado quedas al enemigo
 local conexiones = {}
+
+-- ==============================================
+-- GUI 1: AGARRE AL MÁS CERCANO (MUY CHICA)
+-- ==============================================
+local GuiAgarre = Instance.new("ScreenGui")
+GuiAgarre.Name = "GuiAgarreEnemigo"
+GuiAgarre.ResetOnSpawn = false
+GuiAgarre.Parent = PlayerGui
+
+local MarcoAgarre = Instance.new("Frame")
+MarcoAgarre.Size = UDim2.new(0, 130, 0, 50) -- Muy reducido
+MarcoAgarre.Position = UDim2.new(0.01,0,0.5,0)
+MarcoAgarre.BackgroundColor3 = Color3.fromRGB(22,22,30)
+MarcoAgarre.Active = true
+MarcoAgarre.Draggable = true
+MarcoAgarre.Parent = GuiAgarre
+
+local BotonAgarre = Instance.new("TextButton")
+BotonAgarre.Size = UDim2.new(1,0,1,0)
+BotonAgarre.BackgroundColor3 = Color3.fromRGB(50,130,220)
+BotonAgarre.Text = "AGARRAR"
+BotonAgarre.TextScaled = true
+BotonAgarre.TextColor3 = Color3.new(1,1,1)
+BotonAgarre.Parent = MarcoAgarre
+
+-- ==============================================
+-- GUI 2: VUELO + NOCLIP (MUY CHICA)
+-- ==============================================
+local GuiVuelo = Instance.new("ScreenGui")
+GuiVuelo.Name = "GuiVueloMovil"
+GuiVuelo.ResetOnSpawn = false
+GuiVuelo.Parent = PlayerGui
+
+local MarcoVuelo = Instance.new("Frame")
+MarcoVuelo.Size = UDim2.new(0, 130, 0, 90) -- Reducido
+MarcoVuelo.Position = UDim2.new(0.01,0,0.58,0)
+MarcoVuelo.BackgroundColor3 = Color3.fromRGB(22,22,30)
+MarcoVuelo.Active = true
+MarcoVuelo.Draggable = true
+MarcoVuelo.Parent = GuiVuelo
+
+local BotonVuelo = Instance.new("TextButton")
+BotonVuelo.Size = UDim2.new(0.9,0,0.42,0)
+BotonVuelo.Position = UDim2.new(0.05,0,0.05,0)
+BotonVuelo.BackgroundColor3 = Color3.fromRGB(40,170,80)
+BotonVuelo.Text = "VUELO"
+BotonVuelo.TextScaled = true
+BotonVuelo.TextColor3 = Color3.new(1,1,1)
+BotonVuelo.Parent = MarcoVuelo
+
+local BotonNoclip = Instance.new("TextButton")
+BotonNoclip.Size = UDim2.new(0.9,0,0.42,0)
+BotonNoclip.Position = UDim2.new(0.05,0,0.53,0)
+BotonNoclip.BackgroundColor3 = Color3.fromRGB(190,70,70)
+BotonNoclip.Text = "NOCLIP"
+BotonNoclip.TextScaled = true
+BotonNoclip.TextColor3 = Color3.new(1,1,1)
+BotonNoclip.Parent = MarcoVuelo
 
 -- ==============================================
 -- FUNCIÓN: OBTENER JUGADOR MÁS CERCANO
 -- ==============================================
-local function obtenerJugadorMasCercano()
-    local miPersonaje = LocalPlayer.Character
-    if not miPersonaje or not miPersonaje:FindFirstChild("HumanoidRootPart") then return nil end
-    local miPos = miPersonaje.HumanoidRootPart.Position
+local function obtenerMasCercano()
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local miPos = char.HumanoidRootPart.Position
+    local masCercano, distMin = nil, math.huge
 
-    local masCercano, distanciaMinima = nil, math.huge
-    for _, jugador in ipairs(Players:GetPlayers()) do
-        if jugador ~= LocalPlayer and jugador.Character 
-        and jugador.Character:FindFirstChild("HumanoidRootPart") 
-        and jugador.Character:FindFirstChild("Humanoid").Health > 0 then
-            local dist = (miPos - jugador.Character.HumanoidRootPart.Position).Magnitude
-            if dist < distanciaMinima then
-                distanciaMinima = dist
-                masCercano = jugador
-            end
+    for _,j in pairs(Players:GetPlayers()) do
+        if j~=LocalPlayer and j.Character and j.Character:FindFirstChild("HumanoidRootPart") and j.Character.Humanoid.Health>0 then
+            local d = (miPos - j.Character.HumanoidRootPart.Position).Magnitude
+            if d < distMin then distMin = d; masCercano = j end
         end
     end
     return masCercano
 end
 
 -- ==============================================
--- GUI 1: BLOQUEAR JUGADOR MÁS CERCANO
+-- LÓGICA AGARRE: QUEDAS PEGADO AL ENEMIGO
 -- ==============================================
-local GuiBloquear = Instance.new("ScreenGui")
-GuiBloquear.Name = "GuiBloqueoJugador"
-GuiBloquear.ResetOnSpawn = false
-GuiBloquear.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-GuiBloquear.Parent = PlayerGui
-
-local MarcoBloqueo = Instance.new("Frame")
-MarcoBloqueo.Size = UDim2.new(0, 220, 0, 100)
-MarcoBloqueo.Position = UDim2.new(0.02, 0, 0.3, 0)
-MarcoBloqueo.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-MarcoBloqueo.Active = true
-MarcoBloqueo.Draggable = true
-MarcoBloqueo.Parent = GuiBloquear
-
-local BotonBloquear = Instance.new("TextButton")
-BotonBloquear.Size = UDim2.new(0.9, 0, 0.4, 0)
-BotonBloquear.Position = UDim2.new(0.05, 0, 0.1, 0)
-BotonBloquear.BackgroundColor3 = Color3.fromRGB(45, 120, 200)
-BotonBloquear.Text = "Bloquear más cercano"
-BotonBloquear.TextColor3 = Color3.new(1,1,1)
-BotonBloquear.Parent = MarcoBloqueo
-
-local EtiquetaEstado = Instance.new("TextLabel")
-EtiquetaEstado.Size = UDim2.new(0.9, 0, 0.3, 0)
-EtiquetaEstado.Position = UDim2.new(0.05, 0, 0.55, 0)
-EtiquetaEstado.BackgroundTransparency = 1
-EtiquetaEstado.Text = "Sin objetivo"
-EtiquetaEstado.TextColor3 = Color3.new(1,1,1)
-EtiquetaEstado.Parent = MarcoBloqueo
-
-BotonBloquear.MouseButton1Click:Connect(function()
+BotonAgarre.MouseButton1Click:Connect(function()
     if objetivoBloqueado then
         objetivoBloqueado = nil
-        EtiquetaEstado.Text = "Sin objetivo"
-        BotonBloquear.Text = "Bloquear más cercano"
+        BotonAgarre.Text = "AGARRAR"
+        BotonAgarre.BackgroundColor3 = Color3.fromRGB(50,130,220)
     else
-        objetivoBloqueado = obtenerJugadorMasCercano()
+        objetivoBloqueado = obtenerMasCercano()
         if objetivoBloqueado then
-            EtiquetaEstado.Text = "Objetivo: "..objetivoBloqueado.Name
-            BotonBloquear.Text = "Soltar objetivo"
-        else
-            EtiquetaEstado.Text = "No hay jugadores cerca"
+            BotonAgarre.Text = "SOLTAR"
+            BotonAgarre.BackgroundColor3 = Color3.fromRGB(210,60,60)
         end
     end
 end)
 
 -- ==============================================
--- GUI 2: VUELO + NOCLIP
--- ==============================================
-local GuiVuelo = Instance.new("ScreenGui")
-GuiVuelo.Name = "GuiVueloNoclip"
-GuiVuelo.ResetOnSpawn = false
-GuiVuelo.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-GuiVuelo.Parent = PlayerGui
-
-local MarcoVuelo = Instance.new("Frame")
-MarcoVuelo.Size = UDim2.new(0, 220, 0, 140)
-MarcoVuelo.Position = UDim2.new(0.02, 0, 0.45, 0)
-MarcoVuelo.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-MarcoVuelo.Active = true
-MarcoVuelo.Draggable = true
-MarcoVuelo.Parent = GuiVuelo
-
-local BotonVuelo = Instance.new("TextButton")
-BotonVuelo.Size = UDim2.new(0.9, 0, 0.28, 0)
-BotonVuelo.Position = UDim2.new(0.05, 0, 0.05, 0)
-BotonVuelo.BackgroundColor3 = Color3.fromRGB(35, 160, 70)
-BotonVuelo.Text = "Activar Vuelo"
-BotonVuelo.TextColor3 = Color3.new(1,1,1)
-BotonVuelo.Parent = MarcoVuelo
-
-local BotonNoclip = Instance.new("TextButton")
-BotonNoclip.Size = UDim2.new(0.9, 0, 0.28, 0)
-BotonNoclip.Position = UDim2.new(0.05, 0, 0.38, 0)
-BotonNoclip.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
-BotonNoclip.Text = "Activar Noclip"
-BotonNoclip.TextColor3 = Color3.new(1,1,1)
-BotonNoclip.Parent = MarcoVuelo
-
-local EtiquetaVelocidad = Instance.new("TextLabel")
-EtiquetaVelocidad.Size = UDim2.new(0.9, 0, 0.28, 0)
-EtiquetaVelocidad.Position = UDim2.new(0.05, 0, 0.71, 0)
-EtiquetaVelocidad.BackgroundTransparency = 1
-EtiquetaVelocidad.Text = "Velocidad: "..velocidadVuelo
-EtiquetaVelocidad.TextColor3 = Color3.new(1,1,1)
-EtiquetaVelocidad.Parent = MarcoVuelo
-
--- ==============================================
--- LÓGICA DE VUELO
+-- LÓGICA VUELO: FUNCIONA EN MOVIL, NO DEPENDE DE TECLAS
 -- ==============================================
 local function alternarVuelo()
     estaVolando = not estaVolando
-    BotonVuelo.Text = estaVolando and "Desactivar Vuelo" or "Activar Vuelo"
-    BotonVuelo.BackgroundColor3 = estaVolando and Color3.fromRGB(200, 60, 60) or Color3.fromRGB(35, 160, 70)
+    BotonVuelo.Text = estaVolando and "DESACTIVAR" or "VUELO"
+    BotonVuelo.BackgroundColor3 = estaVolando and Color3.fromRGB(210,60,60) or Color3.fromRGB(40,170,80)
 
     if estaVolando then
-        conexiones.Vuelo = RunService.RenderStepped:Connect(function(delta)
+        conexiones.Vuelo = RunService.RenderStepped:Connect(function()
             local char = LocalPlayer.Character
             if not char then return end
             local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -147,21 +128,26 @@ local function alternarVuelo()
             hum.PlatformStand = true
             hum.GravityScale = 0
 
-            -- Si hay objetivo bloqueado: seguirlo
+            -- SI TIENES OBJETIVO: TE MANTIENES PEGADO A ÉL
             if objetivoBloqueado and objetivoBloqueado.Character and objetivoBloqueado.Character:FindFirstChild("HumanoidRootPart") then
-                hrp.CFrame = hrp.CFrame:Lerp(objetivoBloqueado.Character.HumanoidRootPart.CFrame, 0.08)
+                local objHRP = objetivoBloqueado.Character.HumanoidRootPart
+                -- Te ajusta la distancia automáticamente
+                hrp.CFrame = CFrame.new(objHRP.Position, objHRP.Position + (hrp.Position - objHRP.Position)) * CFrame.new(0,0,-distanciaAgarre)
             end
 
-            -- Movimiento libre + vuelo
+            -- MOVIMIENTO LIBRE: funciona con joystick de movil y teclado
             local dir = Vector3.new()
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir += Camera.CFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir -= Camera.CFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir -= Camera.CFrame.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir += Camera.CFrame.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.Q) then dir += Vector3.new(0,1,0) end
-            if UserInputService:IsKeyDown(Enum.KeyCode.E) then dir += Vector3.new(0,-1,0) end
+            if hum.MoveDirection.Magnitude > 0 then
+                dir = hum.MoveDirection
+            else
+                -- Si no mueves nada: avanzas hacia donde mira la cámara
+                dir = Camera.CFrame.LookVector
+            end
 
-            if dir.Magnitude > 0 then dir = dir.Unit end
+            -- Subir/bajar con toque en pantalla o teclas
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir += Vector3.new(0,0.6,0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then dir += Vector3.new(0,-0.6,0) end
+
             hrp.AssemblyLinearVelocity = dir * velocidadVuelo
         end)
     else
@@ -174,33 +160,31 @@ local function alternarVuelo()
 end
 
 -- ==============================================
--- LÓGICA DE NOCLIP
+-- LÓGICA NOCLIP
 -- ==============================================
 local function alternarNoclip()
     estaNoclipeando = not estaNoclipeando
-    BotonNoclip.Text = estaNoclipeando and "Desactivar Noclip" or "Activar Noclip"
-    BotonNoclip.BackgroundColor3 = estaNoclipeando and Color3.fromRGB(35, 160, 70) or Color3.fromRGB(180, 80, 80)
+    BotonNoclip.Text = estaNoclipeando and "DESACTIVAR" or "NOCLIP"
+    BotonNoclip.BackgroundColor3 = estaNoclipeando and Color3.fromRGB(40,170,80) or Color3.fromRGB(190,70,70)
 
     if estaNoclipeando then
         conexiones.Noclip = RunService.Stepped:Connect(function()
-            local char = LocalPlayer.Character
-            if not char then return end
-            for _, parte in ipairs(char:GetDescendants()) do
-                if parte:IsA("BasePart") then parte.CanCollide = false end
+            if LocalPlayer.Character then
+                for _,v in pairs(LocalPlayer.Character:GetDescendants()) do
+                    if v:IsA("BasePart") then v.CanCollide = not estaNoclipeando end
+                end
             end
         end)
     else
         if conexiones.Noclip then conexiones.Noclip:Disconnect() end
         if LocalPlayer.Character then
-            for _, parte in ipairs(LocalPlayer.Character:GetDescendants()) do
-                if parte:IsA("BasePart") then parte.CanCollide = true end
+            for _,v in pairs(LocalPlayer.Character:GetDescendants()) do
+                if v:IsA("BasePart") then v.CanCollide = true end
             end
         end
     end
 end
 
--- ==============================================
 -- CONECTAR BOTONES
--- ==============================================
 BotonVuelo.MouseButton1Click:Connect(alternarVuelo)
 BotonNoclip.MouseButton1Click:Connect(alternarNoclip)
