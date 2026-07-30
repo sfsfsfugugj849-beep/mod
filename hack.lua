@@ -1,15 +1,19 @@
--- Delta Executor Ultimate Fling
+-- Delta Executor - Lock Back & Camera Script
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
 
 -- Eliminar interfaz anterior si existe
-local oldGui = game:GetService("CoreGui"):FindFirstChild("DeltaFlingGui") or LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("DeltaFlingGui")
+local oldGui = game:GetService("CoreGui"):FindFirstChild("DeltaBackFollowGui") or LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("DeltaBackFollowGui")
 if oldGui then oldGui:Destroy() end
 
--- GUI Base
+-- ==========================================
+-- CREACIÓN DE INTERFAZ GRÁFICA PEQUEÑA (GUI)
+-- ==========================================
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "DeltaFlingGui"
+ScreenGui.Name = "DeltaBackFollowGui"
 ScreenGui.ResetOnSpawn = false
 
 pcall(function()
@@ -19,9 +23,10 @@ if not ScreenGui.Parent then
 	ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 end
 
+-- Cuadro Pequeño (180x220 pixels)
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 230, 0, 330)
-MainFrame.Position = UDim2.new(0.05, 0, 0.25, 0)
+MainFrame.Size = UDim2.new(0, 180, 0, 220)
+MainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -33,125 +38,107 @@ UICorner.CornerRadius = UDim.new(0, 8)
 UICorner.Parent = MainFrame
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 35)
+Title.Size = UDim2.new(1, 0, 0, 28)
 Title.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-Title.Text = "Ultra Fling Panel"
+Title.Text = "Back Follower"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 16
+Title.TextSize = 14
 Title.Font = Enum.Font.SourceSansBold
 Title.Parent = MainFrame
 
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 8)
+TitleCorner.Parent = Title
+
 local ScrollList = Instance.new("ScrollingFrame")
-ScrollList.Size = UDim2.new(0.9, 0, 0.55, 0)
-ScrollList.Position = UDim2.new(0.05, 0, 0.14, 0)
-ScrollList.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
+ScrollList.Size = UDim2.new(0.9, 0, 0.52, 0)
+ScrollList.Position = UDim2.new(0.05, 0, 0.16, 0)
+ScrollList.BackgroundColor3 = Color3.fromRGB(12, 12, 15)
 ScrollList.BorderSizePixel = 0
-ScrollList.ScrollBarThickness = 4
+ScrollList.ScrollBarThickness = 3
 ScrollList.Parent = MainFrame
 
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = ScrollList
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0, 4)
+UIListLayout.Padding = UDim.new(0, 3)
 
-local FlingOneBtn = Instance.new("TextButton")
-FlingOneBtn.Size = UDim2.new(0.9, 0, 0.11, 0)
-FlingOneBtn.Position = UDim2.new(0.05, 0, 0.72, 0)
-FlingOneBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 40)
-FlingOneBtn.Text = "ULTRA FLING ONE"
-FlingOneBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-FlingOneBtn.Font = Enum.Font.SourceSansBold
-FlingOneBtn.TextSize = 14
-FlingOneBtn.Parent = MainFrame
+local FollowBtn = Instance.new("TextButton")
+FollowBtn.Size = UDim2.new(0.9, 0, 0.2, 0)
+FollowBtn.Position = UDim2.new(0.05, 0, 0.74, 0)
+FollowBtn.BackgroundColor3 = Color3.fromRGB(40, 140, 80)
+FollowBtn.Text = "Seguir Espalda"
+FollowBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+FollowBtn.Font = Enum.Font.SourceSansBold
+FollowBtn.TextSize = 13
+FollowBtn.Parent = MainFrame
 
-local FlingAllBtn = Instance.new("TextButton")
-FlingAllBtn.Size = UDim2.new(0.9, 0, 0.11, 0)
-FlingAllBtn.Position = UDim2.new(0.05, 0, 0.85, 0)
-FlingAllBtn.BackgroundColor3 = Color3.fromRGB(180, 20, 20)
-FlingAllBtn.Text = "ULTRA FLING ALL"
-FlingAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-FlingAllBtn.Font = Enum.Font.SourceSansBold
-FlingAllBtn.TextSize = 14
-FlingAllBtn.Parent = MainFrame
-
-for _, btn in pairs({FlingOneBtn, FlingAllBtn}) do
-	local btnCorner = Instance.new("UICorner")
-	btnCorner.CornerRadius = UDim.new(0, 6)
-	btnCorner.Parent = btn
-end
+local BtnCorner = Instance.new("UICorner")
+BtnCorner.CornerRadius = UDim.new(0, 6)
+BtnCorner.Parent = FollowBtn
 
 -- ==========================================
--- SISTEMA DE ULTRA FLING ANTI-SELF-FLING
+-- LÓGICA DE SEGUIMIENTO Y CÁMARA
 -- ==========================================
 local selectedPlayer = nil
+local isFollowing = false
+local followConnection = nil
 
 local function getRoot(char)
-	return char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+	return char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso"))
 end
 
-local function executeUltraFling(targetPlayer)
+local function stopFollowing()
+	isFollowing = false
+	FollowBtn.Text = "Seguir Espalda"
+	FollowBtn.BackgroundColor3 = Color3.fromRGB(40, 140, 80)
+	
+	if followConnection then
+		followConnection:Disconnect()
+		followConnection = nil
+	end
+	
+	-- Restaurar tipo de cámara a normal
+	Camera.CameraType = Enum.CameraType.Custom
+	if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+		Camera.CameraSubject = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+	end
+end
+
+local function startFollowing(targetPlayer)
 	if not targetPlayer or targetPlayer == LocalPlayer then return end
 
-	local myChar = LocalPlayer.Character
-	local targetChar = targetPlayer.Character
-	if not (myChar and targetChar) then return end
+	isFollowing = true
+	FollowBtn.Text = "Detener"
+	FollowBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
 
-	local myHRP = getRoot(myChar)
-	local targetHRP = getRoot(targetChar)
-	local myHumanoid = myChar:FindFirstChildOfClass("Humanoid")
-	if not (myHRP and targetHRP and myHumanoid) then return end
+	followConnection = RunService.RenderStepped:Connect(function()
+		local myChar = LocalPlayer.Character
+		local targetChar = targetPlayer.Character
 
-	-- Guardar CFrame original para regresar a salvo
-	local originalCFrame = myHRP.CFrame
-
-	-- 1. Desactivar colisiones de todo nuestro personaje
-	local noclipConn = RunService.Stepped:Connect(function()
-		for _, part in pairs(myChar:GetDescendants()) do
-			if part:IsA("BasePart") then
-				part.CanCollide = false
-			end
+		if not (myChar and targetChar and isFollowing) then
+			stopFollowing()
+			return
 		end
-	end)
 
-	-- 2. Configurar giro hiper-acelerado sin resistencia
-	local bAV = Instance.new("BodyAngularVelocity")
-	bAV.Name = "HyperSpin"
-	bAV.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-	bAV.AngularVelocity = Vector3.new(0, 9999999, 0) -- Velocidad extrema
-	bAV.Parent = myHRP
+		local myHRP = getRoot(myChar)
+		local targetHRP = getRoot(targetChar)
 
-	-- 3. Bucle de físicas agresivas
-	local startTime = tick()
-	local flingConn
-	flingConn = RunService.Heartbeat:Connect(function()
-		if tick() - startTime > 1.2 or not targetHRP.Parent or not targetChar:FindFirstChildOfClass("Humanoid") then
-			-- Finalizar y limpiar
-			flingConn:Disconnect()
-			noclipConn:Disconnect()
-			if bAV then bAV:Destroy() end
-			
-			-- Detener velocidad propia inmediatamente para no salir volando
-			myHRP.Velocity = Vector3.new(0, 0, 0)
-			myHRP.RotVelocity = Vector3.new(0, 0, 0)
-			myHRP.CFrame = originalCFrame
-		else
-			-- Sincronizar estado para evitar tropezar con nuestras propias físicas
-			myHumanoid:ChangeState(Enum.HumanoidStateType.Physics)
+		if not (myHRP and targetHRP) then return end
 
-			-- Alternar posición entre el centro y la base del enemigo a súper velocidad
-			-- Esto rompe el cálculo de físicas del objetivo y lo expulsa
-			local offset = Vector3.new(math.random(-1, 1), -1.5, math.random(-1, 1))
-			myHRP.CFrame = targetHRP.CFrame * CFrame.new(offset) * CFrame.Angles(math.rad(math.random(0, 360)), math.rad(math.random(0, 360)), 0)
+		-- 1. Posicionar exactamente a 4 studs detrás de su espalda (+Z en espacio local de la CFrame)
+		-- CFrame.new(0, 0, 4) se coloca a 4 studs detrás de la orientación del objetivo
+		local backPosition = targetHRP.CFrame * CFrame.new(0, 0, 4)
+		myHRP.CFrame = backPosition
 
-			-- Inyectar impulso masivo en la red
-			myHRP.Velocity = Vector3.new(0, 999999, 0)
-			myHRP.RotVelocity = Vector3.new(999999, 999999, 999999)
-		end
+		-- 2. Apuntar la cámara directamente al jugador objetivo
+		Camera.CameraType = Enum.CameraType.Scriptable
+		Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHRP.Position)
 	end)
 end
 
 -- ==========================================
--- GESTIÓN DE JUGADORES
+-- ACTUALIZACIÓN DE LISTA DE JUGADORES
 -- ==========================================
 local function updatePlayerList()
 	for _, child in pairs(ScrollList:GetChildren()) do
@@ -161,46 +148,50 @@ local function updatePlayerList()
 	for _, player in pairs(Players:GetPlayers()) do
 		if player ~= LocalPlayer then
 			local btn = Instance.new("TextButton")
-			btn.Size = UDim2.new(1, 0, 0, 26)
-			btn.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
+			btn.Size = UDim2.new(1, 0, 0, 22)
+			btn.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
 			btn.BorderSizePixel = 0
-			btn.Text = "  " .. player.DisplayName
-			btn.TextColor3 = Color3.fromRGB(220, 220, 220)
+			btn.Text = " " .. player.DisplayName
+			btn.TextColor3 = Color3.fromRGB(200, 200, 200)
 			btn.Font = Enum.Font.SourceSans
-			btn.TextSize = 13
+			btn.TextSize = 12
 			btn.TextXAlignment = Enum.TextXAlignment.Left
 			btn.Parent = ScrollList
 
-			local btnCorner = Instance.new("UICorner")
-			btnCorner.CornerRadius = UDim.new(0, 4)
-			btnCorner.Parent = btn
+			local bCorner = Instance.new("UICorner")
+			bCorner.CornerRadius = UDim.new(0, 4)
+			bCorner.Parent = btn
 
 			btn.MouseButton1Click:Connect(function()
 				selectedPlayer = player
 				for _, b in pairs(ScrollList:GetChildren()) do
-					if b:IsA("TextButton") then b.BackgroundColor3 = Color3.fromRGB(35, 35, 42) end
+					if b:IsA("TextButton") then b.BackgroundColor3 = Color3.fromRGB(30, 30, 38) end
 				end
-				btn.BackgroundColor3 = Color3.fromRGB(200, 70, 40)
+				btn.BackgroundColor3 = Color3.fromRGB(50, 110, 190)
+				
+				-- Si ya estaba siguiendo a otro, detenerlo
+				if isFollowing then
+					stopFollowing()
+				end
 			end)
 		end
 	end
 end
 
-FlingOneBtn.MouseButton1Click:Connect(function()
-	if selectedPlayer then
-		executeUltraFling(selectedPlayer)
-	end
-end)
-
-FlingAllBtn.MouseButton1Click:Connect(function()
-	for _, player in pairs(Players:GetPlayers()) do
-		if player ~= LocalPlayer then
-			executeUltraFling(player)
-			task.wait(1.3)
-		end
+FollowBtn.MouseButton1Click:Connect(function()
+	if isFollowing then
+		stopFollowing()
+	elseif selectedPlayer then
+		startFollowing(selectedPlayer)
 	end
 end)
 
 Players.PlayerAdded:Connect(updatePlayerList)
-Players.PlayerRemoving:Connect(updatePlayerList)
+Players.PlayerRemoving:Connect(function(player)
+	if player == selectedPlayer and isFollowing then
+		stopFollowing()
+	end
+	updatePlayerList()
+end)
+
 updatePlayerList()
