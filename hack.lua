@@ -57,6 +57,33 @@ toggleBtn.Parent = screenGui
 
 print("ListaJugadores: boton toggle en esquina superior derecha")
 
+-- Hacer el boton arrastrable
+local UserInputService = game:GetService("UserInputService")
+local dragging = false
+local dragStartPos = nil
+local btnStartPos = nil
+
+toggleBtn.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStartPos = input.Position
+		btnStartPos = toggleBtn.Position
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - dragStartPos
+		toggleBtn.Position = UDim2.new(btnStartPos.X.Scale, btnStartPos.X.Offset + delta.X, btnStartPos.Y.Scale, btnStartPos.Y.Offset + delta.Y)
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = false
+	end
+end)
+
 -- Panel principal en esquina superior derecha, debajo del toggle
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "Panel"
@@ -139,7 +166,24 @@ local function flyToPlayer(targetPlayer)
 	local root = localChar:FindFirstChild("HumanoidRootPart")
 	local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
 	if not root or not targetRoot then return end
-	root.CFrame = CFrame.new(targetRoot.Position)
+
+	-- Vuelo suave en lugar de teleport
+	local startPos = root.Position
+	local targetPos = targetRoot.Position
+	local duration = 0.5
+	local startTime = tick()
+
+	spawn(function()
+		while root and root.Parent and tick() - startTime < duration do
+			local alpha = math.min((tick() - startTime) / duration, 1)
+			root.CFrame = CFrame.new(startPos:Lerp(targetPos, alpha))
+			wait()
+		end
+		if root then
+			root.CFrame = CFrame.new(targetPos)
+		end
+	end)
+
 	print("ListaJugadores: volando hacia " .. targetPlayer.Name)
 end
 
