@@ -1,190 +1,203 @@
--- SERVICIOS
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local Camera = workspace.CurrentCamera
-
--- JUGADOR LOCAL
+local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- ESTADOS
-local objetivoBloqueado = nil
-local estaVolando = false
-local estaNoclipeando = false
-local velocidadVuelo = 40
-local distanciaAgarre = 3 -- Qué tan pegado quedas al enemigo
-local conexiones = {}
+-- Esperar a que el PlayerGui esté listo
+if not PlayerGui then return end
 
--- ==============================================
--- GUI 1: AGARRE AL MÁS CERCANO (MUY CHICA)
--- ==============================================
-local GuiAgarre = Instance.new("ScreenGui")
-GuiAgarre.Name = "GuiAgarreEnemigo"
-GuiAgarre.ResetOnSpawn = false
-GuiAgarre.Parent = PlayerGui
-
-local MarcoAgarre = Instance.new("Frame")
-MarcoAgarre.Size = UDim2.new(0, 130, 0, 50) -- Muy reducido
-MarcoAgarre.Position = UDim2.new(0.01,0,0.5,0)
-MarcoAgarre.BackgroundColor3 = Color3.fromRGB(22,22,30)
-MarcoAgarre.Active = true
-MarcoAgarre.Draggable = true
-MarcoAgarre.Parent = GuiAgarre
-
-local BotonAgarre = Instance.new("TextButton")
-BotonAgarre.Size = UDim2.new(1,0,1,0)
-BotonAgarre.BackgroundColor3 = Color3.fromRGB(50,130,220)
-BotonAgarre.Text = "AGARRAR"
-BotonAgarre.TextScaled = true
-BotonAgarre.TextColor3 = Color3.new(1,1,1)
-BotonAgarre.Parent = MarcoAgarre
-
--- ==============================================
--- GUI 2: VUELO + NOCLIP (MUY CHICA)
--- ==============================================
-local GuiVuelo = Instance.new("ScreenGui")
-GuiVuelo.Name = "GuiVueloMovil"
-GuiVuelo.ResetOnSpawn = false
-GuiVuelo.Parent = PlayerGui
-
-local MarcoVuelo = Instance.new("Frame")
-MarcoVuelo.Size = UDim2.new(0, 130, 0, 90) -- Reducido
-MarcoVuelo.Position = UDim2.new(0.01,0,0.58,0)
-MarcoVuelo.BackgroundColor3 = Color3.fromRGB(22,22,30)
-MarcoVuelo.Active = true
-MarcoVuelo.Draggable = true
-MarcoVuelo.Parent = GuiVuelo
-
-local BotonVuelo = Instance.new("TextButton")
-BotonVuelo.Size = UDim2.new(0.9,0,0.42,0)
-BotonVuelo.Position = UDim2.new(0.05,0,0.05,0)
-BotonVuelo.BackgroundColor3 = Color3.fromRGB(40,170,80)
-BotonVuelo.Text = "VUELO"
-BotonVuelo.TextScaled = true
-BotonVuelo.TextColor3 = Color3.new(1,1,1)
-BotonVuelo.Parent = MarcoVuelo
-
-local BotonNoclip = Instance.new("TextButton")
-BotonNoclip.Size = UDim2.new(0.9,0,0.42,0)
-BotonNoclip.Position = UDim2.new(0.05,0,0.53,0)
-BotonNoclip.BackgroundColor3 = Color3.fromRGB(190,70,70)
-BotonNoclip.Text = "NOCLIP"
-BotonNoclip.TextScaled = true
-BotonNoclip.TextColor3 = Color3.new(1,1,1)
-BotonNoclip.Parent = MarcoVuelo
-
--- ==============================================
--- FUNCIÓN: OBTENER JUGADOR MÁS CERCANO
--- ==============================================
-local function obtenerMasCercano()
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    local miPos = char.HumanoidRootPart.Position
-    local masCercano, distMin = nil, math.huge
-
-    for _,j in pairs(Players:GetPlayers()) do
-        if j~=LocalPlayer and j.Character and j.Character:FindFirstChild("HumanoidRootPart") and j.Character.Humanoid.Health>0 then
-            local d = (miPos - j.Character.HumanoidRootPart.Position).Magnitude
-            if d < distMin then distMin = d; masCercano = j end
-        end
-    end
-    return masCercano
+-- Verificar que no exista ya
+if PlayerGui:FindFirstChild("ListaJugadores") then
+	PlayerGui.ListaJugadores:Destroy()
 end
 
--- ==============================================
--- LÓGICA AGARRE: QUEDAS PEGADO AL ENEMIGO
--- ==============================================
-BotonAgarre.MouseButton1Click:Connect(function()
-    if objetivoBloqueado then
-        objetivoBloqueado = nil
-        BotonAgarre.Text = "AGARRAR"
-        BotonAgarre.BackgroundColor3 = Color3.fromRGB(50,130,220)
-    else
-        objetivoBloqueado = obtenerMasCercano()
-        if objetivoBloqueado then
-            BotonAgarre.Text = "SOLTAR"
-            BotonAgarre.BackgroundColor3 = Color3.fromRGB(210,60,60)
-        end
-    end
+-- Crear ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ListaJugadores"
+screenGui.IgnoreGuiInset = true
+screenGui.Parent = PlayerGui
+
+-- Construir toda la UI
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "Panel"
+mainFrame.Size = UDim2.new(0, 200, 0, 250)
+mainFrame.Position = UDim2.new(1, -210, 0, 10)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+mainFrame.BackgroundTransparency = 0.15
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 10)
+corner.Parent = mainFrame
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(255, 180, 30)
+stroke.Thickness = 1.5
+stroke.Transparency = 0.5
+stroke.Parent = mainFrame
+
+local title = Instance.new("TextLabel")
+title.Name = "Titulo"
+title.Text = "Jugadores"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 16
+title.TextColor3 = Color3.new(1, 1, 1)
+title.BackgroundTransparency = 1
+title.Size = UDim2.new(1, -30, 0, 30)
+title.Position = UDim2.new(0, 10, 0, 5)
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = mainFrame
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Name = "Cerrar"
+closeBtn.Text = "X"
+closeBtn.Font = Enum.Font.GothamBlack
+closeBtn.TextSize = 14
+closeBtn.TextColor3 = Color3.new(1, 1, 1)
+closeBtn.BackgroundColor3 = Color3.fromRGB(220, 40, 40)
+closeBtn.BorderSizePixel = 0
+closeBtn.Size = UDim2.new(0, 22, 0, 22)
+closeBtn.Position = UDim2.new(1, -26, 0, 7)
+closeBtn.Parent = mainFrame
+
+local cCorner = Instance.new("UICorner")
+cCorner.CornerRadius = UDim.new(0, 11)
+cCorner.Parent = closeBtn
+
+closeBtn.MouseButton1Click:Connect(function()
+	screenGui.Enabled = false
 end)
 
--- ==============================================
--- LÓGICA VUELO: FUNCIONA EN MOVIL, NO DEPENDE DE TECLAS
--- ==============================================
-local function alternarVuelo()
-    estaVolando = not estaVolando
-    BotonVuelo.Text = estaVolando and "DESACTIVAR" or "VUELO"
-    BotonVuelo.BackgroundColor3 = estaVolando and Color3.fromRGB(210,60,60) or Color3.fromRGB(40,170,80)
+local scroll = Instance.new("ScrollingFrame")
+scroll.Name = "Lista"
+scroll.Size = UDim2.new(1, -10, 1, -42)
+scroll.Position = UDim2.new(0, 5, 0, 40)
+scroll.BackgroundTransparency = 1
+scroll.BorderSizePixel = 0
+scroll.ScrollBarThickness = 3
+scroll.ScrollBarImageColor3 = Color3.fromRGB(255, 180, 30)
+scroll.ScrollingDirection = Enum.ScrollingDirection.Y
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+scroll.Parent = mainFrame
 
-    if estaVolando then
-        conexiones.Vuelo = RunService.RenderStepped:Connect(function()
-            local char = LocalPlayer.Character
-            if not char then return end
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            local hum = char:FindFirstChild("Humanoid")
-            if not hrp or not hum then return end
+local listLayout = Instance.new("UIListLayout")
+listLayout.Padding = UDim.new(0, 4)
+listLayout.FillDirection = Enum.FillDirection.Vertical
+listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+listLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Parent = scroll
 
-            hum.PlatformStand = true
-            hum.GravityScale = 0
+local padding = Instance.new("UIPadding")
+padding.PaddingTop = UDim.new(0, 2)
+padding.PaddingBottom = UDim.new(0, 4)
+padding.Parent = scroll
 
-            -- SI TIENES OBJETIVO: TE MANTIENES PEGADO A ÉL
-            if objetivoBloqueado and objetivoBloqueado.Character and objetivoBloqueado.Character:FindFirstChild("HumanoidRootPart") then
-                local objHRP = objetivoBloqueado.Character.HumanoidRootPart
-                -- Te ajusta la distancia automáticamente
-                hrp.CFrame = CFrame.new(objHRP.Position, objHRP.Position + (hrp.Position - objHRP.Position)) * CFrame.new(0,0,-distanciaAgarre)
-            end
+local uiScale = Instance.new("UIScale")
+uiScale.Name = "Escala"
+uiScale.Scale = 1
+uiScale.Parent = screenGui
 
-            -- MOVIMIENTO LIBRE: funciona con joystick de movil y teclado
-            local dir = Vector3.new()
-            if hum.MoveDirection.Magnitude > 0 then
-                dir = hum.MoveDirection
-            else
-                -- Si no mueves nada: avanzas hacia donde mira la cámara
-                dir = Camera.CFrame.LookVector
-            end
+local function updateScale()
+	local h = screenGui.AbsoluteSize.Y
+	uiScale.Scale = math.clamp(h / 1080, 0.5, 1.5)
+end
+screenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateScale)
+updateScale()
 
-            -- Subir/bajar con toque en pantalla o teclas
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir += Vector3.new(0,0.6,0) end
-            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then dir += Vector3.new(0,-0.6,0) end
+-- ── Lógica de jugadores ──
+local playerFrames = {}
 
-            hrp.AssemblyLinearVelocity = dir * velocidadVuelo
-        end)
-    else
-        if conexiones.Vuelo then conexiones.Vuelo:Disconnect() end
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.PlatformStand = false
-            LocalPlayer.Character.Humanoid.GravityScale = 1
-        end
-    end
+local function flyToPlayer(targetPlayer)
+	local localChar = LocalPlayer.Character
+	if not localChar then return end
+	local targetChar = targetPlayer.Character
+	if not targetChar then return end
+	local root = localChar:FindFirstChild("HumanoidRootPart")
+	local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+	if not root or not targetRoot then return end
+
+	local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local goal = {CFrame = CFrame.new(targetRoot.Position)}
+	local tween = TweenService:Create(root, tweenInfo, goal)
+	tween:Play()
 end
 
--- ==============================================
--- LÓGICA NOCLIP
--- ==============================================
-local function alternarNoclip()
-    estaNoclipeando = not estaNoclipeando
-    BotonNoclip.Text = estaNoclipeando and "DESACTIVAR" or "NOCLIP"
-    BotonNoclip.BackgroundColor3 = estaNoclipeando and Color3.fromRGB(40,170,80) or Color3.fromRGB(190,70,70)
+local function createPlayerEntry(player, layoutOrder)
+	local entry = Instance.new("Frame")
+	entry.Name = player.Name
+	entry.Size = UDim2.new(1, -6, 0, 36)
+	entry.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+	entry.BackgroundTransparency = 0.3
+	entry.BorderSizePixel = 0
+	entry.LayoutOrder = layoutOrder
+	entry.Parent = scroll
 
-    if estaNoclipeando then
-        conexiones.Noclip = RunService.Stepped:Connect(function()
-            if LocalPlayer.Character then
-                for _,v in pairs(LocalPlayer.Character:GetDescendants()) do
-                    if v:IsA("BasePart") then v.CanCollide = not estaNoclipeando end
-                end
-            end
-        end)
-    else
-        if conexiones.Noclip then conexiones.Noclip:Disconnect() end
-        if LocalPlayer.Character then
-            for _,v in pairs(LocalPlayer.Character:GetDescendants()) do
-                if v:IsA("BasePart") then v.CanCollide = true end
-            end
-        end
-    end
+	local ecorner = Instance.new("UICorner")
+	ecorner.CornerRadius = UDim.new(0, 6)
+	ecorner.Parent = entry
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Text = player.Name
+	nameLabel.Font = Enum.Font.Gotham
+	nameLabel.TextSize = 13
+	nameLabel.TextColor3 = Color3.new(1, 1, 1)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Size = UDim2.new(1, -60, 1, 0)
+	nameLabel.Position = UDim2.new(0, 6, 0, 0)
+	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+	nameLabel.Parent = entry
+
+	local flyBtn = Instance.new("TextButton")
+	flyBtn.Name = "Volar"
+	flyBtn.Text = "➤"
+	flyBtn.Font = Enum.Font.GothamBold
+	flyBtn.TextSize = 14
+	flyBtn.TextColor3 = Color3.new(1, 1, 1)
+	flyBtn.BackgroundColor3 = Color3.fromRGB(50, 180, 100)
+	flyBtn.BorderSizePixel = 0
+	flyBtn.Size = UDim2.new(0, 34, 0, 26)
+	flyBtn.Position = UDim2.new(1, -38, 0.5, -13)
+	flyBtn.Parent = entry
+
+	local btnCorner = Instance.new("UICorner")
+	btnCorner.CornerRadius = UDim.new(0, 5)
+	btnCorner.Parent = flyBtn
+
+	flyBtn.MouseButton1Click:Connect(function()
+		flyToPlayer(player)
+	end)
+
+	return entry
 end
 
--- CONECTAR BOTONES
-BotonVuelo.MouseButton1Click:Connect(alternarVuelo)
-BotonNoclip.MouseButton1Click:Connect(alternarNoclip)
+local function refreshList()
+	for _, frame in pairs(playerFrames) do
+		frame:Destroy()
+	end
+	playerFrames = {}
+
+	local sortedPlayers = Players:GetPlayers()
+	table.sort(sortedPlayers, function(a, b) return a.UserId < b.UserId end)
+
+	for i, player in ipairs(sortedPlayers) do
+		if player ~= LocalPlayer then
+			local frame = createPlayerEntry(player, i)
+			playerFrames[player] = frame
+		end
+	end
+end
+
+Players.PlayerAdded:Connect(refreshList)
+Players.PlayerRemoving:Connect(refreshList)
+
+LocalPlayer.CharacterAdded:Connect(function()
+	refreshList()
+end)
+
+if LocalPlayer.Character then
+	refreshList()
+end
+refreshList()
