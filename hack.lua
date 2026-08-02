@@ -166,21 +166,44 @@ local function flyToPlayer(targetPlayer)
 	local root = localChar:FindFirstChild("HumanoidRootPart")
 	local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
 	if not root or not targetRoot then return end
+	local humanoid = localChar:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
 
-	-- Vuelo suave en lugar de teleport
+	-- Guardar estado original
+	local oldPlatformStand = humanoid.PlatformStand
+	local partsCollide = {}
+	for _, part in ipairs(localChar:GetDescendants()) do
+		if part:IsA("BasePart") then
+			partsCollide[part] = part.CanCollide
+			part.CanCollide = false
+		end
+	end
+	humanoid.PlatformStand = true
+
+	-- Vuelo suave
 	local startPos = root.Position
 	local targetPos = targetRoot.Position
 	local duration = 0.5
 	local startTime = tick()
 
 	spawn(function()
-		while root and root.Parent and tick() - startTime < duration do
+		while root and root.Parent and humanoid and tick() - startTime < duration do
 			local alpha = math.min((tick() - startTime) / duration, 1)
 			root.CFrame = CFrame.new(startPos:Lerp(targetPos, alpha))
 			wait()
 		end
+		-- Posición final exacta
 		if root then
 			root.CFrame = CFrame.new(targetPos)
+		end
+		-- Restaurar estado
+		if humanoid and humanoid.Parent then
+			humanoid.PlatformStand = oldPlatformStand
+		end
+		for part, canCollide in pairs(partsCollide) do
+			if part and part.Parent then
+				part.CanCollide = canCollide
+			end
 		end
 	end)
 
