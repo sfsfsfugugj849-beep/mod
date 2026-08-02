@@ -182,31 +182,41 @@ local function flyToPlayer(targetPlayer)
 	humanoid.PlatformStand = true
 	humanoid.AutoRotate = false
 
-	-- Vuelo suave
+	-- Destino elevado 10 studs para pasar sobre cualquier objeto
+	local targetPosBase = targetRoot.Position
+	local targetPosHigh = targetPosBase + Vector3.new(0, 10, 0)
 	local startPos = root.Position
-	local targetPos = targetRoot.Position
 	local duration = 0.5
 	local startTime = tick()
 
 	spawn(function()
+		-- Vuelo hasta el punto alto
 		while root and root.Parent and humanoid and tick() - startTime < duration do
 			local alpha = math.min((tick() - startTime) / duration, 1)
-			root.CFrame = CFrame.new(startPos:Lerp(targetPos, alpha))
+			root.CFrame = CFrame.new(startPos:Lerp(targetPosHigh, alpha))
 			root.Velocity = Vector3.zero
 			root.RotVelocity = Vector3.zero
 			wait()
 		end
 
-		-- Mantener PlatformStand y forzar posicion durante 2s para que el server la acepte
-		local anchorEnd = tick() + 2
+		-- Mantenerse en el punto alto durante 1s para que el servidor acepte la nueva posición
+		local anchorEnd = tick() + 1
 		while root and root.Parent and tick() < anchorEnd do
-			root.CFrame = CFrame.new(targetPos)
+			root.CFrame = CFrame.new(targetPosHigh)
 			root.Velocity = Vector3.zero
 			root.RotVelocity = Vector3.zero
 			wait(0.1)
 		end
 
-		-- Restaurar física
+		-- Bajar justo a la posición del jugador (caída instantánea desde arriba)
+		if root then
+			root.CFrame = CFrame.new(targetPosBase)
+			root.Velocity = Vector3.zero
+			root.RotVelocity = Vector3.zero
+		end
+
+		-- Pequeña pausa y restaurar física
+		wait(0.5)
 		if humanoid and humanoid.Parent then
 			humanoid.PlatformStand = oldPlatformStand
 			humanoid.AutoRotate = oldAutoRotate
