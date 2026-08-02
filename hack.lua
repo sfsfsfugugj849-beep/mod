@@ -197,16 +197,16 @@ local function flyToPlayer(targetPlayer)
 			wait()
 		end
 
-		-- Forzar la posición final repetidamente para que el servidor la acepte
-		local anchorTime = tick()
-		while root and root.Parent and tick() - anchorTime < 1 do
+		-- Mantener PlatformStand y forzar posicion durante 2s para que el server la acepte
+		local anchorEnd = tick() + 2
+		while root and root.Parent and tick() < anchorEnd do
 			root.CFrame = CFrame.new(targetPos)
 			root.Velocity = Vector3.zero
 			root.RotVelocity = Vector3.zero
 			wait(0.1)
 		end
 
-		-- Ahora restaurar física
+		-- Restaurar física
 		if humanoid and humanoid.Parent then
 			humanoid.PlatformStand = oldPlatformStand
 			humanoid.AutoRotate = oldAutoRotate
