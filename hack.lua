@@ -172,14 +172,13 @@ local function flyToPlayer(targetPlayer)
 	-- Tomar control de red (clave para evitar rebotes)
 	root:SetNetworkOwner(LocalPlayer)
 
-	-- Quitar colisiones y PlatformStand para evitar interferencias
+	-- Quitar físicas mientras volamos
 	local oldPlatformStand = humanoid.PlatformStand
 	humanoid.PlatformStand = true
 
-	-- Vuelo suave por encima de todo
 	local startPos = root.Position
-	local targetPos = targetRoot.Position + Vector3.new(0, 10, 0) -- 10 studs arriba para evitar edificios
-	local duration = 0.5
+	local targetPos = targetRoot.Position
+	local duration = 2  -- más lento para evitar rebotes
 	local startTime = tick()
 
 	spawn(function()
@@ -192,25 +191,24 @@ local function flyToPlayer(targetPlayer)
 			wait()
 		end
 
-		-- Posición final arriba
+		-- Posición final exacta
 		if root then
 			root.CFrame = CFrame.new(targetPos)
 			root.Velocity = Vector3.zero
 			root.RotVelocity = Vector3.zero
 		end
 
+		-- Pequeña pausa antes de restaurar
 		wait(0.5)
 
-		-- Bajar al suelo (opcional, dejamos que la física lo haga al restaurar)
-		-- Restaurar
 		if humanoid and humanoid.Parent then
 			humanoid.PlatformStand = oldPlatformStand
 		end
 
-		-- Devolver propiedad de red al servidor
+		-- Devolver propiedad al servidor
 		root:SetNetworkOwner(nil)
 
-		print("ListaJugadores: volando hacia " .. targetPlayer.Name)
+		print("ListaJugadores: llegada a " .. targetPlayer.Name)
 	end)
 end
 
