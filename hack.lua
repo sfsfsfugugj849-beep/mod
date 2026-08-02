@@ -171,6 +171,7 @@ local function flyToPlayer(targetPlayer)
 
 	-- Guardar estado original
 	local oldPlatformStand = humanoid.PlatformStand
+	local oldAutoRotate = humanoid.AutoRotate
 	local partsCollide = {}
 	for _, part in ipairs(localChar:GetDescendants()) do
 		if part:IsA("BasePart") then
@@ -179,6 +180,7 @@ local function flyToPlayer(targetPlayer)
 		end
 	end
 	humanoid.PlatformStand = true
+	humanoid.AutoRotate = false
 
 	-- Vuelo suave
 	local startPos = root.Position
@@ -190,15 +192,24 @@ local function flyToPlayer(targetPlayer)
 		while root and root.Parent and humanoid and tick() - startTime < duration do
 			local alpha = math.min((tick() - startTime) / duration, 1)
 			root.CFrame = CFrame.new(startPos:Lerp(targetPos, alpha))
+			root.Velocity = Vector3.zero
+			root.RotVelocity = Vector3.zero
 			wait()
 		end
-		-- Posición final exacta
-		if root then
+
+		-- Forzar la posición final repetidamente para que el servidor la acepte
+		local anchorTime = tick()
+		while root and root.Parent and tick() - anchorTime < 1 do
 			root.CFrame = CFrame.new(targetPos)
+			root.Velocity = Vector3.zero
+			root.RotVelocity = Vector3.zero
+			wait(0.1)
 		end
-		-- Restaurar estado
+
+		-- Ahora restaurar física
 		if humanoid and humanoid.Parent then
 			humanoid.PlatformStand = oldPlatformStand
+			humanoid.AutoRotate = oldAutoRotate
 		end
 		for part, canCollide in pairs(partsCollide) do
 			if part and part.Parent then
