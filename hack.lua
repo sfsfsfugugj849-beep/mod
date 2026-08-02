@@ -169,46 +169,49 @@ local function flyToPlayer(targetPlayer)
 	local humanoid = localChar:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return end
 
-	-- Guardar estado original
-	local oldWalkSpeed = humanoid.WalkSpeed
-	local oldPlatformStand = humanoid.PlatformStand
-	local partsCollide = {}
-	for _, part in ipairs(localChar:GetDescendants()) do
-		if part:IsA("BasePart") then
-			table.insert(partsCollide, {part = part, canCollide = part.CanCollide})
-			part.CanCollide = false
-		end
-	end
+	-- Tomar control de red (clave para evitar rebotes)
+	root:SetNetworkOwner(LocalPlayer)
 
-	-- Super velocidad con noclip (MoveTo es autoritativo, sin rebotes)
-	humanoid.WalkSpeed = 200
-	humanoid.PlatformStand = false
+	-- Quitar colisiones y PlatformStand para evitar interferencias
+	local oldPlatformStand = humanoid.PlatformStand
+	humanoid.PlatformStand = true
+
+	-- Vuelo suave por encima de todo
+	local startPos = root.Position
+	local targetPos = targetRoot.Position + Vector3.new(0, 10, 0) -- 10 studs arriba para evitar edificios
+	local duration = 0.5
+	local startTime = tick()
 
 	spawn(function()
-		while root and root.Parent and targetRoot and targetRoot.Parent do
-			local targetPos = targetRoot.Position
-			humanoid:MoveTo(targetPos)
-			local dist = (root.Position - targetPos).Magnitude
-			if dist < 5 then break end
-			wait(0.1)
+		while root and root.Parent and tick() - startTime < duration do
+			local alpha = (tick() - startTime) / duration
+			if alpha > 1 then alpha = 1 end
+			root.CFrame = CFrame.new(startPos:Lerp(targetPos, alpha))
+			root.Velocity = Vector3.zero
+			root.RotVelocity = Vector3.zero
+			wait()
 		end
 
-		-- Pequeña pausa para que el servidor procese la llegada
-		wait(0.3)
+		-- Posición final arriba
+		if root then
+			root.CFrame = CFrame.new(targetPos)
+			root.Velocity = Vector3.zero
+			root.RotVelocity = Vector3.zero
+		end
 
-		-- Restaurar estado original
+		wait(0.5)
+
+		-- Bajar al suelo (opcional, dejamos que la física lo haga al restaurar)
+		-- Restaurar
 		if humanoid and humanoid.Parent then
-			humanoid.WalkSpeed = oldWalkSpeed
 			humanoid.PlatformStand = oldPlatformStand
 		end
-		for _, v in ipairs(partsCollide) do
-			if v.part and v.part.Parent then
-				v.part.CanCollide = v.canCollide
-			end
-		end
-	end)
 
-	print("ListaJugadores: volando hacia " .. targetPlayer.Name)
+		-- Devolver propiedad de red al servidor
+		root:SetNetworkOwner(nil)
+
+		print("ListaJugadores: volando hacia " .. targetPlayer.Name)
+	end)
 end
 
 local function createPlayerEntry(player, layoutOrder)
