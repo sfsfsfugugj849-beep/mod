@@ -170,60 +170,40 @@ local function flyToPlayer(targetPlayer)
 	if not humanoid then return end
 
 	-- Guardar estado original
+	local oldWalkSpeed = humanoid.WalkSpeed
 	local oldPlatformStand = humanoid.PlatformStand
-	local oldAutoRotate = humanoid.AutoRotate
 	local partsCollide = {}
 	for _, part in ipairs(localChar:GetDescendants()) do
 		if part:IsA("BasePart") then
-			partsCollide[part] = part.CanCollide
+			table.insert(partsCollide, {part = part, canCollide = part.CanCollide})
 			part.CanCollide = false
 		end
 	end
-	humanoid.PlatformStand = true
-	humanoid.AutoRotate = false
 
-	-- Destino elevado 10 studs para pasar sobre cualquier objeto
-	local targetPosBase = targetRoot.Position
-	local targetPosHigh = targetPosBase + Vector3.new(0, 10, 0)
-	local startPos = root.Position
-	local duration = 0.5
-	local startTime = tick()
+	-- Super velocidad con noclip (MoveTo es autoritativo, sin rebotes)
+	humanoid.WalkSpeed = 200
+	humanoid.PlatformStand = false
 
 	spawn(function()
-		-- Vuelo hasta el punto alto
-		while root and root.Parent and humanoid and tick() - startTime < duration do
-			local alpha = math.min((tick() - startTime) / duration, 1)
-			root.CFrame = CFrame.new(startPos:Lerp(targetPosHigh, alpha))
-			root.Velocity = Vector3.zero
-			root.RotVelocity = Vector3.zero
-			wait()
-		end
-
-		-- Mantenerse en el punto alto durante 1s para que el servidor acepte la nueva posición
-		local anchorEnd = tick() + 1
-		while root and root.Parent and tick() < anchorEnd do
-			root.CFrame = CFrame.new(targetPosHigh)
-			root.Velocity = Vector3.zero
-			root.RotVelocity = Vector3.zero
+		while root and root.Parent and targetRoot and targetRoot.Parent do
+			local targetPos = targetRoot.Position
+			humanoid:MoveTo(targetPos)
+			local dist = (root.Position - targetPos).Magnitude
+			if dist < 5 then break end
 			wait(0.1)
 		end
 
-		-- Bajar justo a la posición del jugador (caída instantánea desde arriba)
-		if root then
-			root.CFrame = CFrame.new(targetPosBase)
-			root.Velocity = Vector3.zero
-			root.RotVelocity = Vector3.zero
-		end
+		-- Pequeña pausa para que el servidor procese la llegada
+		wait(0.3)
 
-		-- Pequeña pausa y restaurar física
-		wait(0.5)
+		-- Restaurar estado original
 		if humanoid and humanoid.Parent then
+			humanoid.WalkSpeed = oldWalkSpeed
 			humanoid.PlatformStand = oldPlatformStand
-			humanoid.AutoRotate = oldAutoRotate
 		end
-		for part, canCollide in pairs(partsCollide) do
-			if part and part.Parent then
-				part.CanCollide = canCollide
+		for _, v in ipairs(partsCollide) do
+			if v.part and v.part.Parent then
+				v.part.CanCollide = v.canCollide
 			end
 		end
 	end)
