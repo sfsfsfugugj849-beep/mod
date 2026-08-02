@@ -40,28 +40,29 @@ spawn(function()
 end)
 print("ListaJugadores: escala configurada")
 
--- Boton toggle
+-- Boton toggle centrado arriba con margen superior grande
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Name = "Alternar"
-toggleBtn.Text = "J"
+toggleBtn.Text = "JUG"
 toggleBtn.Font = Enum.Font.SourceSansBold
 toggleBtn.TextSize = 18
 toggleBtn.TextColor3 = Color3.new(1, 1, 1)
 toggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 toggleBtn.BorderSizePixel = 0
-toggleBtn.Size = UDim2.new(0, 32, 0, 32)
-toggleBtn.Position = UDim2.new(1, -6, 0, 6)
-toggleBtn.AnchorPoint = Vector2.new(1, 0)
+toggleBtn.Size = UDim2.new(0, 80, 0, 44)
+toggleBtn.Position = UDim2.new(0.5, -40, 0, 120)  -- mas abajo para no quedar tapado
+toggleBtn.AnchorPoint = Vector2.new(0, 0)
 toggleBtn.ZIndex = 10
 toggleBtn.Parent = screenGui
-print("ListaJugadores: boton toggle creado")
 
--- Panel principal
+print("ListaJugadores: posicion toggle Y=120, tamano pantalla=" .. tostring(screenGui.AbsoluteSize))
+
+-- Panel principal - centrado horizontalmente debajo del toggle
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "Panel"
-mainFrame.Size = UDim2.new(0, 170, 0, 280)
-mainFrame.Position = UDim2.new(1, -6, 0, 44)
-mainFrame.AnchorPoint = Vector2.new(1, 0)
+mainFrame.Size = UDim2.new(0, 200, 0, 280)
+mainFrame.Position = UDim2.new(0.5, -100, 0, 60)  -- centrado horizontal, abajo del toggle
+mainFrame.AnchorPoint = Vector2.new(0, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 mainFrame.BackgroundTransparency = 0.1
 mainFrame.BorderSizePixel = 0
@@ -70,10 +71,10 @@ mainFrame.ZIndex = 5
 mainFrame.Parent = screenGui
 print("ListaJugadores: panel creado")
 
--- Encabezado
+-- Encabezado con fondo mas visible
 local header = Instance.new("Frame")
 header.Name = "Encabezado"
-header.Size = UDim2.new(1, 0, 0, 28)
+header.Size = UDim2.new(1, 0, 0, 32)
 header.BackgroundColor3 = Color3.fromRGB(255, 120, 20)
 header.BorderSizePixel = 0
 header.Parent = mainFrame
@@ -82,10 +83,10 @@ local title = Instance.new("TextLabel")
 title.Name = "Titulo"
 title.Text = "Jugadores"
 title.Font = Enum.Font.SourceSansBold
-title.TextSize = 14
+title.TextSize = 16
 title.TextColor3 = Color3.new(1, 1, 1)
 title.BackgroundTransparency = 1
-title.Size = UDim2.new(1, -28, 1, 0)
+title.Size = UDim2.new(1, -36, 1, 0)
 title.Position = UDim2.new(0, 8, 0, 0)
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = header
@@ -94,12 +95,12 @@ local closeBtn = Instance.new("TextButton")
 closeBtn.Name = "Cerrar"
 closeBtn.Text = "X"
 closeBtn.Font = Enum.Font.SourceSansBold
-closeBtn.TextSize = 14
+closeBtn.TextSize = 16
 closeBtn.TextColor3 = Color3.new(1, 1, 1)
 closeBtn.BackgroundColor3 = Color3.fromRGB(220, 40, 40)
 closeBtn.BorderSizePixel = 0
-closeBtn.Size = UDim2.new(0, 22, 0, 22)
-closeBtn.Position = UDim2.new(1, -24, 0.5, -11)
+closeBtn.Size = UDim2.new(0, 28, 0, 28)
+closeBtn.Position = UDim2.new(1, -30, 0.5, -14)
 closeBtn.Parent = header
 
 closeBtn.MouseButton1Click:Connect(function()
@@ -107,11 +108,11 @@ closeBtn.MouseButton1Click:Connect(function()
 end)
 print("ListaJugadores: encabezado creado")
 
--- ScrollingFrame simple
+-- ScrollingFrame
 local scroll = Instance.new("ScrollingFrame")
 scroll.Name = "Lista"
-scroll.Size = UDim2.new(1, -6, 1, -34)
-scroll.Position = UDim2.new(0, 3, 0, 32)
+scroll.Size = UDim2.new(1, -6, 1, -36)
+scroll.Position = UDim2.new(0, 3, 0, 34)
 scroll.BackgroundTransparency = 1
 scroll.BorderSizePixel = 0
 scroll.ScrollBarThickness = 3
@@ -145,7 +146,7 @@ end
 local function createPlayerEntry(player, layoutOrder)
 	local entry = Instance.new("Frame")
 	entry.Name = player.Name
-	entry.Size = UDim2.new(1, -4, 0, 38)
+	entry.Size = UDim2.new(1, -4, 0, 42)
 	entry.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 	entry.BorderSizePixel = 0
 	entry.LayoutOrder = layoutOrder
@@ -154,10 +155,10 @@ local function createPlayerEntry(player, layoutOrder)
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Text = player.Name
 	nameLabel.Font = Enum.Font.SourceSans
-	nameLabel.TextSize = 13
+	nameLabel.TextSize = 14
 	nameLabel.TextColor3 = Color3.new(1, 1, 1)
 	nameLabel.BackgroundTransparency = 1
-	nameLabel.Size = UDim2.new(1, -44, 1, 0)
+	nameLabel.Size = UDim2.new(1, -48, 1, 0)
 	nameLabel.Position = UDim2.new(0, 6, 0, 0)
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 	nameLabel.Parent = entry
@@ -166,12 +167,12 @@ local function createPlayerEntry(player, layoutOrder)
 	flyBtn.Name = "Volar"
 	flyBtn.Text = ">"
 	flyBtn.Font = Enum.Font.SourceSansBold
-	flyBtn.TextSize = 16
+	flyBtn.TextSize = 18
 	flyBtn.TextColor3 = Color3.new(1, 1, 1)
 	flyBtn.BackgroundColor3 = Color3.fromRGB(50, 180, 100)
 	flyBtn.BorderSizePixel = 0
-	flyBtn.Size = UDim2.new(0, 32, 0, 28)
-	flyBtn.Position = UDim2.new(1, -36, 0.5, -14)
+	flyBtn.Size = UDim2.new(0, 36, 0, 30)
+	flyBtn.Position = UDim2.new(1, -40, 0.5, -15)
 	flyBtn.Parent = entry
 
 	flyBtn.MouseButton1Click:Connect(function()
@@ -188,26 +189,34 @@ local function refreshList()
 	end
 	playerFrames = {}
 
-	-- Ajustar tamano del canvas manualmente
-	local count = 0
-	local sortedPlayers = Players:GetPlayers()
-	table.sort(sortedPlayers, function(a, b) return a.UserId < b.UserId end)
+	local allPlayers = Players:GetPlayers()
+	print("ListaJugadores: total jugadores = " .. #allPlayers)
+	
+	table.sort(allPlayers, function(a, b) return a.Name < b.Name end)
 
-	for i, player in ipairs(sortedPlayers) do
+	local count = 0
+	for i, player in ipairs(allPlayers) do
 		if player ~= LocalPlayer then
 			local frame = createPlayerEntry(player, i)
 			playerFrames[player] = frame
 			count = count + 1
+			print("  -> " .. player.Name)
 		end
 	end
 	-- Canvas manual
-	scroll.CanvasSize = UDim2.new(0, 0, 0, count * 41)
+	scroll.CanvasSize = UDim2.new(0, 0, 0, count * 45)
 	print("ListaJugadores: lista actualizada, " .. count .. " jugadores")
 end
 
 -- Eventos
-Players.PlayerAdded:Connect(refreshList)
-Players.PlayerRemoving:Connect(refreshList)
+Players.PlayerAdded:Connect(function(p)
+	print("ListaJugadores: jugador agregado: " .. p.Name)
+	refreshList()
+end)
+Players.PlayerRemoving:Connect(function(p)
+	print("ListaJugadores: jugador removido: " .. p.Name)
+	refreshList()
+end)
 
 LocalPlayer.CharacterAdded:Connect(refreshList)
 
