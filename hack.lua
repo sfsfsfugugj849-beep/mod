@@ -40,7 +40,7 @@ spawn(function()
 end)
 print("ListaJugadores: escala configurada")
 
--- Boton toggle centrado arriba con margen superior grande
+-- Boton toggle en esquina superior derecha (layout movil)
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Name = "Alternar"
 toggleBtn.Text = "JUG"
@@ -50,19 +50,19 @@ toggleBtn.TextColor3 = Color3.new(1, 1, 1)
 toggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 toggleBtn.BorderSizePixel = 0
 toggleBtn.Size = UDim2.new(0, 80, 0, 44)
-toggleBtn.Position = UDim2.new(0.5, -40, 0, 120)  -- mas abajo para no quedar tapado
-toggleBtn.AnchorPoint = Vector2.new(0, 0)
+toggleBtn.Position = UDim2.new(1, -8, 0, 8)
+toggleBtn.AnchorPoint = Vector2.new(1, 0)
 toggleBtn.ZIndex = 10
 toggleBtn.Parent = screenGui
 
-print("ListaJugadores: posicion toggle Y=120, tamano pantalla=" .. tostring(screenGui.AbsoluteSize))
+print("ListaJugadores: boton toggle en esquina superior derecha")
 
--- Panel principal - centrado horizontalmente debajo del toggle
+-- Panel principal en esquina superior derecha, debajo del toggle
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "Panel"
 mainFrame.Size = UDim2.new(0, 200, 0, 280)
-mainFrame.Position = UDim2.new(0.5, -100, 0, 60)  -- centrado horizontal, abajo del toggle
-mainFrame.AnchorPoint = Vector2.new(0, 0)
+mainFrame.Position = UDim2.new(1, -8, 0, 60)  -- misma X que toggle, debajo
+mainFrame.AnchorPoint = Vector2.new(1, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 mainFrame.BackgroundTransparency = 0.1
 mainFrame.BorderSizePixel = 0
