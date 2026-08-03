@@ -55,7 +55,7 @@ local titleLabel = Instance.new("TextLabel")
 titleLabel.Size = UDim2.new(1, -30, 0, 30)
 titleLabel.Position = UDim2.new(0, 10, 0, 0)
 titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "Fly Panel (CFrame)"
+titleLabel.Text = "Fly Panel (Forzado)"
 titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 titleLabel.Font = Enum.Font.SourceSansBold
@@ -78,7 +78,7 @@ local flyButton = Instance.new("TextButton")
 flyButton.Size = UDim2.new(0.85, 0, 0, 40)
 flyButton.Position = UDim2.new(0.075, 0, 0.28, 0)
 flyButton.BackgroundColor3 = Color3.fromRGB(0, 160, 230)
-flyButton.Text = "Volar (CFrame Mode)"
+flyButton.Text = "Volar Rápido (10s)"
 flyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 flyButton.Font = Enum.Font.SourceSansBold
 flyButton.TextSize = 13
@@ -145,12 +145,28 @@ flyButton.MouseButton1Click:Connect(function()
 
 	local camera = Workspace.CurrentCamera
 	
-	-- Vuelo suave mediante actualización directa de CFrame
+	-- Anular gravedad usando BodyVelocity
+	local bv = Instance.new("BodyVelocity")
+	bv.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+	bv.Velocity = Vector3.zero
+	bv.Parent = hrp
+
+	local bg = Instance.new("BodyGyro")
+	bg.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
+	bg.P = 10000
+	bg.CFrame = hrp.CFrame
+	bg.Parent = hrp
+
+	-- Cambiar estado del humanoide a Physics para que no flote hacia abajo
+	humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+
+	local FLY_SPEED = 70
+	
 	local connection
-	connection = RunService.RenderStepped:Connect(function(deltaTime)
+	connection = RunService.RenderStepped:Connect(function(dt)
 		if not character or not hrp then return end
 		
-		-- Desactivar colisiones
+		-- Noclip
 		for _, part in ipairs(character:GetDescendants()) do
 			if part:IsA("BasePart") then
 				part.CanCollide = false
@@ -158,31 +174,34 @@ flyButton.MouseButton1Click:Connect(function()
 		end
 
 		local moveDir = humanoid.MoveDirection
-		local speed = 50 * deltaTime
-		local newCFrame = hrp.CFrame
+		local vel = Vector3.zero
 
 		if moveDir.Magnitude > 0 then
-			local flyVector = camera.CFrame:VectorToWorldSpace(camera.CFrame:VectorToObjectSpace(moveDir))
-			newCFrame = newCFrame + (flyVector * speed)
+			vel = camera.CFrame:VectorToWorldSpace(camera.CFrame:VectorToObjectSpace(moveDir)) * FLY_SPEED
 		end
 
 		if isGoingUp then
-			newCFrame = newCFrame + Vector3.new(0, speed, 0)
+			vel = vel + Vector3.new(0, FLY_SPEED, 0)
 		elseif isGoingDown then
-			newCFrame = newCFrame - Vector3.new(0, speed, 0)
+			vel = vel - Vector3.new(0, FLY_SPEED, 0)
 		end
 
-		hrp.CFrame = CFrame.new(newCFrame.Position, newCFrame.Position + camera.CFrame.LookVector)
+		bv.Velocity = vel
+		bg.CFrame = camera.CFrame
 	end)
 
 	for i = 10, 1, -1 do
-		flyButton.Text = "Volando CFrame... (" .. i .. "s)"
+		flyButton.Text = "Volando... (" .. i .. "s)"
 		flyButton.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
 		task.wait(1)
 	end
 
 	connection:Disconnect()
+	bv:Destroy()
+	bg:Destroy()
+	
+	humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 	isFlying = false
-	flyButton.Text = "Volar (CFrame Mode)"
+	flyButton.Text = "Volar Rápido (10s)"
 	flyButton.BackgroundColor3 = Color3.fromRGB(0, 160, 230)
 end)
